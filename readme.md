@@ -73,11 +73,11 @@ It is tested under Ubuntu Linux 20.04 and Python 3.8 environment, and requries s
 
 
 ## Demo
-### 1. Dataset Preparation for Large-scale Experiment 
+### 1. Demo code for Large-scale Experiment 
 
 TODO
 
-### 2. Dataset Preparation for CIFAR Experiment 
+### 2. Demo code for CIFAR Experiment 
 
 Run `./demo-cifar.sh`.
 
