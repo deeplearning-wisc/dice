@@ -12,7 +12,7 @@ In this work, we reveal important insights that reliance on unimportant weights 
 #### In-distribution dataset
 
 Please download [ImageNet-1k](http://www.image-net.org/challenges/LSVRC/2012/index) and place the training data and validation data in
-`./datasets/id_data/ILSVRC-2012/train` and  `./datasets/id_data/ILSVRC-2012/val`, respectively.
+`./datasets/ILSVRC-2012/train` and  `./datasets/ILSVRC-2012/val`, respectively.
 
 #### Out-of-distribution dataset
 
@@ -34,9 +34,11 @@ wget http://pages.cs.wisc.edu/~huangrui/imagenet_ood_dataset/Places.tar.gz
 For Textures, we use the entire dataset, which can be downloaded from their
 [original website](https://www.robots.ox.ac.uk/~vgg/data/dtd/).
 
-Please put all downloaded OOD datasets into `./datasets/ood_data/`.
+Please put all downloaded OOD datasets into `./datasets/`.
 
+#### Pre-trained model
 
+Please download [Bit-S-R101x1](https://drive.google.com/file/d/1hrM3h6HL-BE6PtXJmmc1H6RWe7oakNZo/view?usp=sharing) and place in the `checkpoints` folder.
 
 ### 2. Dataset Preparation for CIFAR Experiment 
 

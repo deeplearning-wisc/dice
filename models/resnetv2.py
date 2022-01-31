@@ -195,7 +195,7 @@ class ResNetV2(nn.Module):
         else:
             self.head = nn.Sequential(OrderedDict([
                 ('fcview', FCView()),
-                ('conv', RouteFcMaxAct(2048 * wf, head_size, bias=True, topk=k, conv1x1=True))
+                ('conv', RouteDICE(2048 * wf, head_size, bias=True, topk=k, conv1x1=True, info=np.load('cache/imagenet2012_subset_BiT-S-R101x1_wa_stat.npy')))
             ]))
 
         if self.fix:
