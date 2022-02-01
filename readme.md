@@ -77,7 +77,7 @@ It is tested under Ubuntu Linux 20.04 and Python 3.8 environment, and requries s
 ## Demo
 ### 1. Demo code for Large-scale Experiment 
 
-TODO
+Run `./demo-imagenet.sh`.
 
 ### 2. Demo code for CIFAR Experiment 
 
