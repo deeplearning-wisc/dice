@@ -5,17 +5,18 @@ import numpy as np
 
 class RouteDICE(nn.Linear):
 
-    def __init__(self, in_features, out_features, bias=True, topk=90, conv1x1=False, info=None):
+    def __init__(self, in_features, out_features, bias=True, p=90, conv1x1=False, info=None):
         super(RouteDICE, self).__init__(in_features, out_features, bias)
         if conv1x1:
             self.weight = nn.Parameter(torch.Tensor(out_features, in_features, 1, 1))
-        self.topk = topk
-        self.info = info[0]
+        self.p = p
+        self.info = info
         self.masked_w = None
 
     def calculate_mask_weight(self):
-        self.thresh = np.percentile(self.info, self.topk)
-        mask = torch.Tensor((self.info > self.thresh))
+        self.contrib = self.info[None, :] * self.weight.data.cpu().numpy()
+        self.thresh = np.percentile(self.contrib, self.p)
+        mask = torch.Tensor((self.contrib > self.thresh))
         self.masked_w = (self.weight.squeeze().cpu() * mask).cuda()
 
     def forward(self, input):

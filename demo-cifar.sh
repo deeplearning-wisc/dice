@@ -11,4 +11,3 @@ echo No Sparsity
 python ood_eval.py --in-dataset CIFAR-10
 echo With Sparsity p=90
 python ood_eval.py --in-dataset CIFAR-10 --p 90
-

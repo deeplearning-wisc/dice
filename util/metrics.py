@@ -126,6 +126,27 @@ def print_results(results, in_dataset, out_dataset, name, method):
     # print(' {val:6.2f}'.format(val=100.*results['AUIN']), end='')
     # print(' {val:6.2f}'.format(val=100.*results['AUOUT']), end='')
 
+
+
+def print_all_results(results, datasets, method):
+    mtypes = ['FPR', 'AUROC', 'AUIN']
+    avg_results = compute_average_results(results)
+    print(' OOD detection method: ' + method)
+    print('             ', end='')
+    for mtype in mtypes:
+        print(' {mtype:6s}'.format(mtype=mtype), end='')
+    for result, dataset in zip(results,datasets):
+        print('\n{dataset:12s}'.format(dataset=dataset), end='')
+        print(' {val:6.2f}'.format(val=100.*result['FPR']), end='')
+        print(' {val:6.2f}'.format(val=100.*result['AUROC']), end='')
+        print(' {val:6.2f}'.format(val=100.*result['AUIN']), end='')
+
+    print('\nAVG         ', end='')
+    print(' {val:6.2f}'.format(val=100.*avg_results['FPR']), end='')
+    print(' {val:6.2f}'.format(val=100.*avg_results['AUROC']), end='')
+    print(' {val:6.2f}'.format(val=100.*avg_results['AUIN']), end='')
+    print('')
+
 def compute_average_results(all_results):
     mtypes = ['FPR', 'DTERR', 'AUROC', 'AUIN', 'AUOUT']
     avg_results = dict()
@@ -170,11 +191,10 @@ def compute_traditional_ood(base_dir, in_dataset, out_datasets, method, name):
 
         all_results.append(results)
 
-    avg_results = compute_average_results(all_results)
+    print_all_results(all_results, out_datasets, method)
+    # avg_results = compute_average_results(all_results)
+    # print_results(avg_results, in_dataset, "All", name, method)
 
-    print_results(avg_results, in_dataset, "All", name, method)
-
-    return
 
 def compute_stat(base_dir, in_dataset, out_datasets, method, name):
     # print('Natural OOD')

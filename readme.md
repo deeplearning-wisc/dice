@@ -1,6 +1,6 @@
-# On the Effectiveness of Sparsification for Detecting the Deep Unknowns
+# On the Effectiveness of Sparsification for Out-of-distribution Detection
 
-This is the source code for paper [On the Effectiveness of Sparsification for Detecting the Deep Unknowns](https://arxiv.org/abs/2111.09805)
+This is the source code for ECCV 2022 paper [On the Effectiveness of Sparsification for Out-of-distribution Detection](https://arxiv.org/abs/2111.09805)
 by Yiyou Sun and Yixuan Li.
 
 In this work, we reveal important insights that reliance on unimportant weights and units can directly attribute to the brittleness of OOD detection. To mitigate the issue, we propose a sparsification-based OOD detection framework termed DICE. Our key idea is to rank weights based on a measure of contribution, and selectively use the most salient weights to derive the output for OOD detection
@@ -64,14 +64,17 @@ cd datasets/ood_datasets
 wget https://www.dropbox.com/s/fhtsw1m3qxlwj6h/LSUN.tar.gz
 tar -xvzf LSUN.tar.gz
 ```
+### 3. Pre-trained Model Preparation
 
+For CIFAR, the model we used in the paper is already in the checkpoints folder. 
+
+For ImageNet, the model we used in the paper is the pre-trained ResNet-50 provided by Pytorch. The download process
+will start upon running.
 
 ## Preliminaries
 It is tested under Ubuntu Linux 20.04 and Python 3.8 environment, and requries some packages to be installed:
 * [PyTorch](https://pytorch.org/)
-* [scipy](https://github.com/scipy/scipy)
 * [numpy](http://www.numpy.org/)
-* [sklearn](https://scikit-learn.org/stable/)
 
 
 ## Demo
@@ -87,12 +90,10 @@ Run `./demo-cifar.sh`.
 
 If you use our codebase, please cite our work:
 ```
-@inproceedings{sun2021dice,
-  title={On the Effectiveness of Sparsification for Detecting the Deep Unknowns},
+@inproceedings{sun2022dice,
+  title={On the Effectiveness of Sparsification for Out-of-distribution Detection},
   author={Sun, Yiyou and Li, Yixuan},
-  year={2021},
-  eprint={2111.09805},
-  archivePrefix={arXiv},
-  primaryClass={cs.LG}
+  booktitle={European Conference on Computer Vision},
+  year={2022}
 }
 ```

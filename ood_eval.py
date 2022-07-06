@@ -14,9 +14,7 @@ import numpy as np
 import time
 from util.metrics import compute_traditional_ood
 
-
 from util.score import get_score
-from models.resnet import resnet18_cifar, resnet50_cifar, resnet101_cifar
 torch.backends.cudnn.benchmark = True
 
 parser = argparse.ArgumentParser(description='Pytorch Detecting Out-of-distribution examples in neural networks')
@@ -35,6 +33,7 @@ parser.add_argument('--out-dist-only', help='only evaluate out-distribution', ac
 
 parser.add_argument('--method', default='energy', type=str, help='odin mahalanobis')
 parser.add_argument('--cal-metric', help='calculatse metric directly', action='store_true')
+parser.add_argument('--clip_threshold', default=1e5, type=float, help='odin mahalanobis')
 
 parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon')
 parser.add_argument('--iters', default=40, type=int,
@@ -89,6 +88,15 @@ def eval_ood_detector(args, mode_args):
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
+
+    transform_test_largescale = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225]),
+    ])
+
     if in_dataset == "CIFAR-10":
         testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
         testloaderIn = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=True, num_workers=2)
@@ -99,33 +107,33 @@ def eval_ood_detector(args, mode_args):
         testloaderIn = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=True, num_workers=2)
         num_classes = 100
 
+    elif in_dataset == "imagenet":
+        testloaderIn = torch.utils.data.DataLoader(
+            torchvision.datasets.ImageFolder(os.path.join('datasets/ILSVRC-2012', 'val'), transform_test_largescale),
+            batch_size=args.batch_size, shuffle=False, num_workers=2)
+        num_classes = 1000
+
     method_args['num_classes'] = num_classes
 
     if args.model_arch == 'densenet':
-        info = np.load(f"cache/{args.in_dataset}_{args.model_arch}_wa_stat.npy")
-        model = dn.DenseNet3(args.layers, num_classes, 12, reduction=0.5, bottleneck=True, dropRate=0.0, normalizer=None, k=args.p,info=info)
-    elif args.model_arch == 'resnet18':
-        model = resnet18_cifar(num_classes=num_classes, k=args.p, info=None)
+        info = np.load(f"cache/{args.in_dataset}_{args.model_arch}_feat_stat.npy")
+        model = dn.DenseNet3(args.layers, num_classes, 12, reduction=0.5, bottleneck=True, dropRate=0.0, normalizer=None, p=args.p, info=info)
+        checkpoint = torch.load(
+            "./checkpoints/{in_dataset}/{name}/checkpoint_{epochs}.pth.tar".format(in_dataset=in_dataset, name=name,
+                                                                                   epochs=epochs))
+        model.load_state_dict(checkpoint['state_dict'])
     elif args.model_arch == 'resnet50':
-        model = resnet50_cifar(num_classes=num_classes, k=args.p)
-    elif args.model_arch == 'resnet101':
-        model = resnet101_cifar(num_classes=num_classes, k=args.p)
+        info = np.load(f"cache/{args.in_dataset}_{args.model_arch}_feat_stat.npy")
+        num_classes = 1000
+        from models.resnet import resnet50
+        model = resnet50(num_classes=num_classes, pretrained=True, p=args.p, info=info, clip_threshold=args.clip_threshold)
     else:
         assert False, 'Not supported model arch: {}'.format(args.model_arch)
 
-    checkpoint = torch.load("./checkpoints/{in_dataset}/{name}/checkpoint_{epochs}.pth.tar".format(in_dataset=in_dataset, name=name, epochs=epochs))
-    model.load_state_dict(checkpoint['state_dict'])
+
 
     model.eval()
     model.cuda()
-
-    if method == "mahalanobis":
-        temp_x = torch.rand(2,3,32,32)
-        temp_x = Variable(temp_x).cuda()
-        temp_list = model.feature_list(temp_x)[1]
-        num_output = len(temp_list)
-        method_args['num_output'] = num_output
-
 
     if not mode_args['out_dist_only']:
         t0 = time.time()
@@ -134,7 +142,7 @@ def eval_ood_detector(args, mode_args):
         g1 = open(os.path.join(in_save_dir, "in_labels.txt"), 'w')
 
     ########################################In-distribution###########################################
-        # print("Processing in-distribution images")
+        print("Processing in-distribution images")
 
         N = len(testloaderIn.dataset)
         count = 0
@@ -151,16 +159,10 @@ def eval_ood_detector(args, mode_args):
             for score in scores:
                 f1.write("{}\n".format(score))
 
-            if method == "rowl":
-                outputs = F.softmax(model(inputs), dim=1)
-                outputs = outputs.detach().cpu().numpy()
-                preds = np.argmax(outputs, axis=1)
-                confs = np.max(outputs, axis=1)
-            else:
-                outputs = F.softmax(model(inputs)[:, :num_classes], dim=1)
-                outputs = outputs.detach().cpu().numpy()
-                preds = np.argmax(outputs, axis=1)
-                confs = np.max(outputs, axis=1)
+            outputs = F.softmax(model(inputs)[:, :num_classes], dim=1)
+            outputs = outputs.detach().cpu().numpy()
+            preds = np.argmax(outputs, axis=1)
+            confs = np.max(outputs, axis=1)
 
             for k in range(preds.shape[0]):
                 g1.write("{} {} {}\n".format(labels[k], preds[k], confs[k]))
@@ -191,7 +193,8 @@ def eval_ood_detector(args, mode_args):
             testsetout = svhn.SVHN('datasets/ood_datasets/svhn/', split='test', transform=transform_test, download=False)
             testloaderOut = torch.utils.data.DataLoader(testsetout, batch_size=args.batch_size, shuffle=False, num_workers=2)
         elif out_dataset == 'dtd':
-            testsetout = torchvision.datasets.ImageFolder(root="datasets/ood_datasets/dtd/images", transform=transform_test)
+            transform = transform_test_largescale if in_dataset in {'imagenet'} else transform_test
+            testsetout = torchvision.datasets.ImageFolder(root="datasets/ood_datasets/dtd/images", transform=transform)
             testloaderOut = torch.utils.data.DataLoader(testsetout, batch_size=batch_size, shuffle=True, num_workers=2)
         elif out_dataset == 'places365':
             testsetout = torchvision.datasets.ImageFolder(root="datasets/ood_datasets/places365/", transform=transform_test)
@@ -203,13 +206,23 @@ def eval_ood_detector(args, mode_args):
             testsetout = torchvision.datasets.ImageFolder(root="/media/sunyiyou/ubuntu-hdd1/dataset/celebA/small", transform=transform_test)
             # testsetout = torchvision.datasets.CelebA(root='datasets/ood_datasets/', split='test', download=True, transform=transform_test)
             testloaderOut = torch.utils.data.DataLoader(testsetout, batch_size=args.batch_size, shuffle=True, num_workers=2)
+        elif out_dataset == 'inat':
+            testloaderOut = torch.utils.data.DataLoader(
+                torchvision.datasets.ImageFolder("./datasets/ood_datasets/iNaturalist", transform=transform_test_largescale), batch_size=batch_size, shuffle=False, num_workers=2)
+        elif out_dataset == 'places':
+            testloaderOut = torch.utils.data.DataLoader(
+                torchvision.datasets.ImageFolder("./datasets/ood_datasets/Places", transform=transform_test_largescale), batch_size=batch_size, shuffle=False, num_workers=2)
+        elif out_dataset == 'sun':
+            testloaderOut = torch.utils.data.DataLoader(
+                torchvision.datasets.ImageFolder("./datasets/ood_datasets/SUN", transform=transform_test_largescale), batch_size=batch_size, shuffle=False, num_workers=2)
+
         else:
             testsetout = torchvision.datasets.ImageFolder("./datasets/ood_datasets/{}".format(out_dataset), transform=transform_test)
             testloaderOut = torch.utils.data.DataLoader(testsetout, batch_size=batch_size, shuffle=False, num_workers=2)
 
     ###################################Out-of-Distributions#####################################
         t0 = time.time()
-        # print("Processing out-of-distribution images")
+        print("Processing out-of-distribution images")
 
         N = len(testloaderOut.dataset)
         count = 0
@@ -241,43 +254,12 @@ if __name__ == '__main__':
     mode_args['in_dist_only'] = args.in_dist_only
     mode_args['out_dist_only'] = args.out_dist_only
 
-    args.out_datasets = ['SVHN', 'LSUN', 'LSUN_resize', 'iSUN', 'dtd', 'places365']  #['SVHN', 'CIFAR-100', 'celebA']
+    if args.in_dataset == 'imagenet':
+        args.out_datasets = ['dtd', 'sun', 'inat', 'places']
+    else:
+        args.out_datasets = ['SVHN', 'LSUN', 'LSUN_resize', 'iSUN', 'dtd', 'places365']
 
-    if args.method == 'msp':
-        eval_ood_detector(args, mode_args)
-    elif args.method == "odin":
-        args.method_args['temperature'] = 1000.0
-        param_dict = {
-            "CIFAR-10": {
-                "wideresnet": 0.0,
-                "densenet": 0.018,
-                "resnet50": 0.04,
-            },
-            "CIFAR-100": {
-                "wideresnet": 0.024,
-                "densenet": 0.024,
-                "resnet50": 0.034,
-            }
-        }
-        args.method_args['magnitude'] = param_dict[args.in_dataset][args.model_arch]
-        eval_ood_detector(args, mode_args)
-    elif args.method == 'mahalanobis':
-        sample_mean, precision, lr_weights, lr_bias, magnitude = np.load(os.path.join('output/mahalanobis_hyperparams/', args.in_dataset, args.name, 'results.npy'), allow_pickle=True)
-        regressor = LogisticRegressionCV(cv=2).fit([[0,0,0,0],[0,0,0,0],[1,1,1,1],[1,1,1,1]], [0,0,1,1])
-        regressor.coef_ = lr_weights
-        regressor.intercept_ = lr_bias
-        args.method_args['sample_mean'] = sample_mean
-        args.method_args['precision'] = precision
-        args.method_args['magnitude'] = magnitude
-        args.method_args['regressor'] = regressor
-        eval_ood_detector(args, mode_args)
-    elif args.method == 'sofl':
-        eval_ood_detector(args, mode_args)
-    elif args.method == 'rowl':
-        eval_ood_detector(args, mode_args)
-    elif args.method == 'atom':
-        eval_ood_detector(args, mode_args)
-    elif args.method == 'energy':
+    if args.method == 'energy':
         args.method_args['temperature'] = 1000.0
         eval_ood_detector(args, mode_args)
 

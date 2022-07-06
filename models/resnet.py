@@ -184,12 +184,22 @@ class AbstractResNet(nn.Module):
 
 class ResNet(AbstractResNet):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers, num_classes=1000, p=None, info=None, clip_threshold=1e10):
         super(ResNet, self).__init__(block, layers, num_classes)
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
         self._initial_weight()
+        self.clip_threshold = clip_threshold
+        if p is None:
+            self.fc = nn.Linear(512 * block.expansion, num_classes)
+        else:
+            self.fc = RouteDICE(512 * block.expansion, num_classes, p=p, info=info)
 
-
+    def forward(self, x):
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = x.clip(max=self.clip_threshold)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
 
 def resnet18(pretrained=False, **kwargs):
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
@@ -205,72 +215,3 @@ def resnet50(pretrained=False, **kwargs):
     return model
 
 
-
-
-class ResNetCifar(AbstractResNet):
-    def __init__(self, block, layers, num_classes=10, k=None, info=None):
-        super(ResNetCifar, self).__init__(block, layers, num_classes)
-        self.in_planes = 64
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        if k is None:
-            self.fc = nn.Linear(512 * block.expansion, num_classes)
-        else:
-            self.fc = RouteDICE(512 * block.expansion, num_classes, topk=k)
-        self.avgpool = nn.AvgPool2d(4, stride=1)
-        self._initial_weight()
-
-    def features(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        return out
-
-    def forward(self, x):
-        feat = self.features(x)
-        out = self.avgpool(feat)
-        out = out.view(out.size(0), -1)
-        out = self.fc(out)
-        return out
-
-    def feature_list(self, x):
-        out_list = []
-        out = F.relu(self.bn1(self.conv1(x)))
-        out_list.append(out)
-        out = self.layer1(out)
-        out_list.append(out)
-        out = self.layer2(out)
-        out_list.append(out)
-        out = self.layer3(out)
-        out_list.append(out)
-        out = self.layer4(out)
-        out = self.avgpool(out)
-        out = out.view(out.size(0), -1)
-        y = self.fc(out)
-        return y, out_list
-
-    def intermediate_forward(self, x, layer_index):
-        if layer_index >= 0:
-            out = F.relu(self.bn1(self.conv1(x)))
-        if layer_index >= 1:
-            out = self.layer1(out)
-        if layer_index >= 2:
-            out = self.layer2(out)
-        if layer_index >= 3:
-            out = self.layer3(out)
-        if layer_index >= 4:
-            out = self.layer4(out)
-        return out
-
-def resnet18_cifar(**kwargs):
-    return ResNetCifar(BasicBlock, [2,2,2,2], **kwargs)
-
-def resnet18_fc_ma_cifar(**kwargs):
-    return ResNetCifarMaxAct(BasicBlock, [2,2,2,2], **kwargs)
-
-def resnet50_cifar(**kwargs):
-    return ResNetCifar(Bottleneck, [3, 4, 6, 3], **kwargs)
-
-def resnet101_cifar(**kwargs):
-    return ResNetCifar(Bottleneck, [3, 4, 23, 3], **kwargs)

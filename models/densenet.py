@@ -76,7 +76,7 @@ class DenseBlock(nn.Module):
 class DenseNet3(nn.Module):
     def __init__(self, depth, num_classes, growth_rate=12,
                  reduction=0.5, bottleneck=True, dropRate=0.0, normalizer = None,
-                 out_classes = 100, k=None, info=None):
+                 out_classes = 100, p=None, info=None):
         super(DenseNet3, self).__init__()
 
         in_planes = 2 * growth_rate
@@ -107,10 +107,10 @@ class DenseNet3(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
 
-        if k is None:
+        if p is None:
             self.fc = nn.Linear(in_planes, num_classes)
         else:
-            self.fc = RouteDICE(in_planes, num_classes, topk=k, info=info)
+            self.fc = RouteDICE(in_planes, num_classes, p=p, info=info)
 
         self.in_planes = in_planes
         self.normalizer = normalizer
