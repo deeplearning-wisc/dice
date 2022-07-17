@@ -15,6 +15,10 @@ class RouteDICE(nn.Linear):
 
     def calculate_mask_weight(self):
         self.contrib = self.info[None, :] * self.weight.data.cpu().numpy()
+        # self.contrib = np.abs(self.contrib)
+        # self.contrib = np.random.rand(*self.contrib.shape)
+        # self.contrib = self.info[None, :]
+        # self.contrib = np.random.rand(*self.info[None, :].shape)
         self.thresh = np.percentile(self.contrib, self.p)
         mask = torch.Tensor((self.contrib > self.thresh))
         self.masked_w = (self.weight.squeeze().cpu() * mask).cuda()

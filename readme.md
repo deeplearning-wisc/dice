@@ -1,6 +1,6 @@
-# On the Effectiveness of Sparsification for Out-of-distribution Detection
+# DICE: Leveraging Sparsification for Out-of-Distribution Detection
 
-This is the source code for ECCV 2022 paper [On the Effectiveness of Sparsification for Out-of-distribution Detection](https://arxiv.org/abs/2111.09805)
+This is the source code for ECCV 2022 paper [DICE: Leveraging Sparsification for Out-of-Distribution Detection](https://arxiv.org/abs/2111.09805)
 by Yiyou Sun and Yixuan Li.
 
 In this work, we reveal important insights that reliance on unimportant weights and units can directly attribute to the brittleness of OOD detection. To mitigate the issue, we propose a sparsification-based OOD detection framework termed DICE. Our key idea is to rank weights based on a measure of contribution, and selectively use the most salient weights to derive the output for OOD detection
@@ -91,7 +91,7 @@ Run `./demo-cifar.sh`.
 If you use our codebase, please cite our work:
 ```
 @inproceedings{sun2022dice,
-  title={On the Effectiveness of Sparsification for Out-of-distribution Detection},
+  title={DICE: Leveraging Sparsification for Out-of-Distribution Detection},
   author={Sun, Yiyou and Li, Yixuan},
   booktitle={European Conference on Computer Vision},
   year={2022}
