@@ -36,10 +36,6 @@ For Textures, we use the entire dataset, which can be downloaded from their
 
 Please put all downloaded OOD datasets into `./datasets/`.
 
-#### Pre-trained model
-
-Please download [Bit-S-R101x1](https://drive.google.com/file/d/1hrM3h6HL-BE6PtXJmmc1H6RWe7oakNZo/view?usp=sharing) and place in the `checkpoints` folder.
-
 ### 2. Dataset Preparation for CIFAR Experiment 
 
 #### In-distribution dataset
